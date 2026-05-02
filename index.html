@@ -1,79 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GymTrackerPro</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GymTrackerPro</title>
 
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#111">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f172a">
 
-  <style>
-    body {
-      font-family: Arial;
-      margin: 0;
-      background: #111;
-      color: #fff;
-    }
-    .container {
-      padding: 20px;
-    }
-    button {
-      padding: 12px 16px;
-      border: none;
-      background: #00c896;
-      color: #000;
-      font-weight: bold;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    .card {
-      background: #1e1e1e;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 10px;
-    }
-    .hidden { display: none; }
-    input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-    }
-  </style>
+<style>
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --accent: #22c55e;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.container {
+  padding: 20px;
+  max-width: 500px;
+  margin: auto;
+  animation: fadeIn 0.4s ease;
+}
+
+h1, h2 {
+  margin: 0 0 10px;
+}
+
+p {
+  color: var(--muted);
+}
+
+button {
+  background: var(--accent);
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: bold;
+  width: 100%;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover {
+  transform: scale(1.03);
+}
+
+.card {
+  background: var(--card);
+  padding: 16px;
+  border-radius: 16px;
+  margin-top: 15px;
+  animation: slideUp 0.3s ease;
+}
+
+.small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: none;
+  background: #020617;
+  color: white;
+}
+
+.fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--accent);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+  transition: 0.2s;
+}
+
+.fab:hover {
+  transform: scale(1.1);
+}
+
+.hidden {
+  display: none;
+}
+
+@keyframes fadeIn {
+  from {opacity: 0;}
+  to {opacity: 1;}
+}
+
+@keyframes slideUp {
+  from {transform: translateY(10px); opacity: 0;}
+  to {transform: translateY(0); opacity: 1;}
+}
+</style>
 </head>
+
 <body>
 
-<div class="container" id="app"></div>
+<div id="app" class="container"></div>
+<div id="fab" class="fab hidden" onclick="toggleForm()">+</div>
 
 <script>
-const app = document.getElementById("app");
-
-// ---------- STATE ----------
 let user = localStorage.getItem("user");
 let workouts = JSON.parse(localStorage.getItem("workouts") || "[]");
 
+const app = document.getElementById("app");
+const fab = document.getElementById("fab");
+
 // ---------- ROUTER ----------
 function render() {
-  if (!user) return renderLanding();
+  if (!user) {
+    fab.classList.add("hidden");
+    return renderLanding();
+  }
+  fab.classList.remove("hidden");
   renderDashboard();
 }
 
 // ---------- LANDING ----------
 function renderLanding() {
   app.innerHTML = `
-    <h1>💪 GymTrackerPro</h1>
-    <p>Track your workouts. Improve every day.</p>
+    <h1>💪 GymTracker</h1>
+    <p>Build consistency. Track your progress. Become unstoppable.</p>
 
-    <button onclick="login()">Get Started</button>
+    <button onclick="login()">Start training</button>
 
     <div class="card">
-      <h3>📊 Track progress</h3>
-      <p>See your improvement over time</p>
+      <h3>📊 See your evolution</h3>
+      <p>No more guessing. Your progress, clear and simple.</p>
     </div>
 
     <div class="card">
-      <h3>🏋️ Log workouts</h3>
-      <p>Fast and simple tracking</p>
+      <h3>⚡ Fast logging</h3>
+      <p>Add workouts in seconds. Stay focused on training.</p>
+    </div>
+
+    <div class="card">
+      <h3>🔥 Stay consistent</h3>
+      <p>Small steps every day → big results.</p>
     </div>
   `;
 }
@@ -89,45 +172,56 @@ function renderDashboard() {
   const total = workouts.length;
 
   app.innerHTML = `
-    <h2>Your Progress</h2>
-    <button onclick="logout()">Logout</button>
+    <h2>Your progress</h2>
+    <p class="small">Keep going. You're doing great 💪</p>
 
     <div class="card">
-      <h3>Total Workouts: ${total}</h3>
+      <h3>${total}</h3>
+      <p class="small">Total workouts</p>
     </div>
 
     <div class="card">
-      <h3>Recent Workouts</h3>
-      ${workouts.slice(-5).reverse().map(w => `
-        <div>
-          <strong>${w.name}</strong><br/>
-          <small>${w.date}</small>
-        </div>
-      `).join("")}
+      <h3>Recent activity</h3>
+      ${
+        workouts.length === 0
+        ? `<p class="small">No workouts yet. Tap + to start 🔥</p>`
+        : workouts.slice(-5).reverse().map(w => `
+          <div style="margin-top:10px">
+            <strong>${w.name}</strong><br/>
+            <span class="small">${w.date}</span>
+          </div>
+        `).join("")
+      }
     </div>
 
-    <button onclick="showAdd()">➕ Add Workout</button>
-
-    <div id="addForm" class="hidden">
-      <input id="wName" placeholder="Workout name"/>
-      <button onclick="addWorkout()">Save Workout</button>
+    <div id="form" class="card hidden">
+      <h3>New workout</h3>
+      <input id="wName" placeholder="e.g. Push Day"/>
+      <button onclick="addWorkout()">Save workout</button>
     </div>
+
+    <button onclick="logout()" style="margin-top:20px;background:#ef4444;">
+      Logout
+    </button>
   `;
 }
 
+// ---------- ACTIONS ----------
 function logout() {
   localStorage.removeItem("user");
   user = null;
   render();
 }
 
-// ---------- ADD WORKOUT ----------
-function showAdd() {
-  document.getElementById("addForm").classList.toggle("hidden");
+function toggleForm() {
+  const form = document.getElementById("form");
+  form.classList.toggle("hidden");
 }
 
 function addWorkout() {
   const name = document.getElementById("wName").value;
+
+  if (!name) return alert("Add a workout name");
 
   const workout = {
     name,
@@ -143,7 +237,7 @@ function addWorkout() {
 // ---------- INIT ----------
 render();
 
-// ---------- SERVICE WORKER ----------
+// ---------- PWA ----------
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js");
 }
