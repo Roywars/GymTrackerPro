@@ -142,6 +142,7 @@ let tab = 'ejercicios';
 let editRec = null;
 let filters = {desde:'',hasta:'',tipo:''};
 let gEj = '', gMet = 'peso';
+let gCa = '', gCaMet = 'km';
 
 const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const CS = ['Correr','Caminar','Ciclismo','Elíptica','Remo','Natación','HIIT','Otro'];
@@ -324,24 +325,31 @@ function saveEdit(){
 
 // ── GRÁFICAS ─────────────────────────────────────────────────────────────────
 function rGraf(){
+  // Ejercicios
   const eju=[...new Set(DB.records.filter(r=>r.tipo==='ejercicio').map(r=>r.nombre))].sort();
   const ejOpts=eju.map(n=>`<option value="${esc(n)}" ${gEj===n?'selected':''}>${esc(n)}</option>`).join('');
   const mOpts=[['peso','Peso (kg)'],['reps','Repeticiones'],['series','Series'],['volumen','Volumen total']].map(([v,l])=>`<option value="${v}" ${gMet===v?'selected':''}>${l}</option>`).join('');
 
   const dEj=DB.records.filter(r=>r.tipo==='ejercicio'&&r.nombre===gEj)
-    .sort((a,b)=>a.fecha.localeCompare(b.fecha))
+    .sort((a,b)=>a.ts-b.ts)
     .map(r=>({f:fmtS(r.fecha),peso:r.peso,reps:r.reps,series:r.series,volumen:Math.round(r.peso*r.reps*r.series)}));
-
-  const dCa=DB.records.filter(r=>r.tipo==='cardio')
-    .sort((a,b)=>a.fecha.localeCompare(b.fecha))
-    .map(r=>({f:fmtS(r.fecha),km:r.km,dur:r.duracion}));
 
   const ejChart=!gEj?`<div class="empty" style="padding:16px 0"><p>Selecciona un ejercicio</p></div>`
     :dEj.length<2?`<div class="empty" style="padding:16px 0"><p>Necesitas al menos 2 registros del mismo ejercicio</p></div>`
     :lineChart(dEj,'f',gMet,'#e8ff47');
 
-  const kmChart=dCa.length===0?`<div class="empty" style="padding:16px 0"><p>Sin registros de cardio</p></div>`:barChart(dCa,'f','km','#47c8ff');
-  const durSection=dCa.some(d=>d.dur>0)?`<div class="cc"><div class="ct">DURACIÓN POR SESIÓN (MIN)</div>${barChart(dCa,'f','dur','#a8ff78')}</div>`:'';
+  // Cardio
+  const cau=[...new Set(DB.records.filter(r=>r.tipo==='cardio').map(r=>r.estilo))].sort();
+  const caOpts=cau.map(n=>`<option value="${esc(n)}" ${gCa===n?'selected':''}>${esc(n)}</option>`).join('');
+  const caMOpts=[['km','Kilómetros'],['dur','Duración (min)']].map(([v,l])=>`<option value="${v}" ${gCaMet===v?'selected':''}>${l}</option>`).join('');
+
+  const dCa=DB.records.filter(r=>r.tipo==='cardio'&&r.estilo===gCa)
+    .sort((a,b)=>a.ts-b.ts)
+    .map(r=>({f:fmtS(r.fecha),km:r.km,dur:r.duracion}));
+
+  const caChart=!gCa?`<div class="empty" style="padding:16px 0"><p>Selecciona un estilo de cardio</p></div>`
+    :dCa.length<2?`<div class="empty" style="padding:16px 0"><p>Necesitas al menos 2 registros del mismo estilo</p></div>`
+    :lineChart(dCa,'f',gCaMet,'#47c8ff');
 
   return `
   <div class="sec-hdr"><span class="sec-title">Gráficas</span></div>
@@ -354,8 +362,14 @@ function rGraf(){
       </div>
       ${ejChart}
     </div>
-    <div class="cc"><div class="ct">KILÓMETROS POR SESIÓN</div>${kmChart}</div>
-    ${durSection}
+    <div class="cc">
+      <div class="ct">PROGRESO DE CARDIO</div>
+      <div class="cs">
+        <div class="grp"><label>Estilo</label><select onchange="gCa=this.value;render()"><option value="">— Seleccionar —</option>${caOpts}</select></div>
+        <div class="grp"><label>Métrica</label><select onchange="gCaMet=this.value;render()">${caMOpts}</select></div>
+      </div>
+      ${caChart}
+    </div>
   </div>`;}
 
 function lineChart(data,xk,yk,color){
