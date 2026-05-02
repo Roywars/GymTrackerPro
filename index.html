@@ -1,246 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>GymTrackerPro</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GymTracker</title>
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0f172a">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-:root {
-  --bg: #0f172a;
-  --card: #1e293b;
-  --accent: #22c55e;
-  --text: #f1f5f9;
-  --muted: #94a3b8;
-}
-
 body {
+  font-family: Arial;
   margin: 0;
-  font-family: system-ui, -apple-system;
-  background: var(--bg);
-  color: var(--text);
-}
-
-.container {
-  padding: 20px;
-  max-width: 500px;
-  margin: auto;
-  animation: fadeIn 0.4s ease;
-}
-
-h1, h2 {
-  margin: 0 0 10px;
-}
-
-p {
-  color: var(--muted);
-}
-
-button {
-  background: var(--accent);
-  border: none;
-  padding: 14px;
-  border-radius: 12px;
-  font-weight: bold;
-  width: 100%;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-button:hover {
-  transform: scale(1.03);
-}
-
-.card {
-  background: var(--card);
-  padding: 16px;
-  border-radius: 16px;
-  margin-top: 15px;
-  animation: slideUp 0.3s ease;
-}
-
-.small {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-input {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  border-radius: 10px;
-  border: none;
-  background: #020617;
+  background: #0f172a;
   color: white;
+  padding: 20px;
 }
-
-.fab {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: var(--accent);
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  font-size: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-  transition: 0.2s;
+.card {
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 10px;
 }
-
-.fab:hover {
-  transform: scale(1.1);
+button {
+  padding: 10px;
+  width: 100%;
+  margin-top: 10px;
 }
-
-.hidden {
-  display: none;
-}
-
-@keyframes fadeIn {
-  from {opacity: 0;}
-  to {opacity: 1;}
-}
-
-@keyframes slideUp {
-  from {transform: translateY(10px); opacity: 0;}
-  to {transform: translateY(0); opacity: 1;}
+input {
+  padding: 10px;
+  width: 100%;
+  margin-top: 10px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="app" class="container"></div>
-<div id="fab" class="fab hidden" onclick="toggleForm()">+</div>
+<div id="app"></div>
 
 <script>
 let user = localStorage.getItem("user");
 let workouts = JSON.parse(localStorage.getItem("workouts") || "[]");
 
-const app = document.getElementById("app");
-const fab = document.getElementById("fab");
-
-// ---------- ROUTER ----------
 function render() {
   if (!user) {
-    fab.classList.add("hidden");
-    return renderLanding();
+    document.getElementById("app").innerHTML = `
+      <h1>💪 GymTracker</h1>
+      <button onclick="login()">Start training</button>
+    `;
+  } else {
+    dashboard();
   }
-  fab.classList.remove("hidden");
-  renderDashboard();
-}
-
-// ---------- LANDING ----------
-function renderLanding() {
-  app.innerHTML = `
-    <h1>💪 GymTracker</h1>
-    <p>Build consistency. Track your progress. Become unstoppable.</p>
-
-    <button onclick="login()">Start training</button>
-
-    <div class="card">
-      <h3>📊 See your evolution</h3>
-      <p>No more guessing. Your progress, clear and simple.</p>
-    </div>
-
-    <div class="card">
-      <h3>⚡ Fast logging</h3>
-      <p>Add workouts in seconds. Stay focused on training.</p>
-    </div>
-
-    <div class="card">
-      <h3>🔥 Stay consistent</h3>
-      <p>Small steps every day → big results.</p>
-    </div>
-  `;
 }
 
 function login() {
-  localStorage.setItem("user", "demo");
-  user = "demo";
+  localStorage.setItem("user", "1");
+  user = "1";
   render();
 }
 
-// ---------- DASHBOARD ----------
-function renderDashboard() {
-  const total = workouts.length;
-
-  app.innerHTML = `
+function dashboard() {
+  document.getElementById("app").innerHTML = `
     <h2>Your progress</h2>
-    <p class="small">Keep going. You're doing great 💪</p>
 
     <div class="card">
-      <h3>${total}</h3>
-      <p class="small">Total workouts</p>
+      Total workouts: ${workouts.length}
     </div>
 
     <div class="card">
-      <h3>Recent activity</h3>
-      ${
-        workouts.length === 0
-        ? `<p class="small">No workouts yet. Tap + to start 🔥</p>`
-        : workouts.slice(-5).reverse().map(w => `
-          <div style="margin-top:10px">
-            <strong>${w.name}</strong><br/>
-            <span class="small">${w.date}</span>
-          </div>
-        `).join("")
-      }
+      <canvas id="chart"></canvas>
     </div>
 
-    <div id="form" class="card hidden">
-      <h3>New workout</h3>
-      <input id="wName" placeholder="e.g. Push Day"/>
-      <button onclick="addWorkout()">Save workout</button>
+    <div class="card">
+      <input id="name" placeholder="Workout name">
+      <button onclick="addWorkout()">Add workout</button>
     </div>
-
-    <button onclick="logout()" style="margin-top:20px;background:#ef4444;">
-      Logout
-    </button>
   `;
-}
 
-// ---------- ACTIONS ----------
-function logout() {
-  localStorage.removeItem("user");
-  user = null;
-  render();
-}
-
-function toggleForm() {
-  const form = document.getElementById("form");
-  form.classList.toggle("hidden");
+  renderChart();
 }
 
 function addWorkout() {
-  const name = document.getElementById("wName").value;
+  const name = document.getElementById("name").value;
 
-  if (!name) return alert("Add a workout name");
+  if (!name) return alert("Write a name");
 
-  const workout = {
+  workouts.push({
     name,
     date: new Date().toLocaleDateString()
-  };
+  });
 
-  workouts.push(workout);
   localStorage.setItem("workouts", JSON.stringify(workouts));
-
   render();
 }
 
-// ---------- INIT ----------
-render();
+function renderChart() {
+  const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  let data = [0,0,0,0,0,0,0];
 
-// ---------- PWA ----------
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js");
+  workouts.forEach(w => {
+    const d = new Date(w.date).getDay();
+    data[d]++;
+  });
+
+  new Chart(document.getElementById("chart"), {
+    type: "bar",
+    data: {
+      labels: days,
+      datasets: [{ data }]
+    }
+  });
 }
+
+render();
 </script>
 
 </body>
