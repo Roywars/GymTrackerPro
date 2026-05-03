@@ -70,11 +70,10 @@ padding-bottom:calc(var(–nb) + var(–sb) + 16px);
 .bn-item.on .bn-icon{transform:scale(1.1);}
 .bn-item.blu.on{color:var(–blu);}
 .bn-item.grn.on{color:var(–grn);}
-
-/* ── FAB ── */
-.fab{position:fixed;bottom:calc(var(–nb) + var(–sb) + 12px);right:16px;width:50px;height:50px;border-radius:50%;background:var(–neon);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1;box-shadow:0 0 16px rgba(57,255,106,.45),0 4px 12px rgba(0,0,0,.4);z-index:101;transition:all .2s;-webkit-appearance:none;}
-.fab:active{transform:scale(.92);}
-.fab.hidden{opacity:0;pointer-events:none;transform:scale(.8);}
+.bn-add{flex:1.2;}
+.bn-add-circle{width:44px;height:44px;border-radius:50%;background:var(–neon);color:#000;display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1;font-weight:700;box-shadow:0 0 14px rgba(57,255,106,.5);transition:transform .15s;margin-bottom:1px;}
+.bn-add:active .bn-add-circle{transform:scale(.9);}
+.bn-add-lbl{font-family:‘DM Sans’,sans-serif;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(–neon);}
 
 /* ── ONBOARDING ── */
 #onboard-shell{
@@ -271,12 +270,12 @@ select option{background:var(–sur2);}
     </div>
   </div>
   <div class="content"><div class="inner" id="root"></div></div>
-  <button class="fab" id="fab" onclick="openQuickAdd()">＋</button>
   <nav class="bottom-nav">
     <button class="bn-item on" data-tab="dashboard" onclick="goTab('dashboard')"><span class="bn-icon">🏠</span>Inici</button>
     <button class="bn-item" data-tab="historial" onclick="goTab('historial')"><span class="bn-icon">🕐</span>Historial</button>
-    <button class="bn-item grn" data-tab="graficas" onclick="goTab('graficas')"><span class="bn-icon">📊</span>Estadísticas</button>
-    <button class="bn-item" data-tab="perfil" onclick="openProfile()"><span class="bn-icon">👤</span>Perfil</button>
+    <button class="bn-item bn-add" onclick="openQuickAdd()"><span class="bn-add-circle">＋</span><span class="bn-add-lbl">Afegir</span></button>
+    <button class="bn-item grn" data-tab="graficas" onclick="goTab('graficas')"><span class="bn-icon">📊</span>Stats</button>
+    <button class="bn-item" onclick="openProfile()"><span class="bn-icon">👤</span>Perfil</button>
   </nav>
 </div>
 
@@ -372,9 +371,7 @@ function totalVol(){return DB.records.filter(r=>r.tipo==='ejercicio').reduce((s,
 // ── NAV ──────────────────────────────────────────────────────────────────────
 function goTab(id){
   tab=id;
-  document.querySelectorAll('.bn-item').forEach(b=>b.classList.toggle('on',b.dataset.tab===id));
-  const fab=document.getElementById('fab');
-  fab.classList.toggle('hidden',id==='graficas');
+  document.querySelectorAll('.bn-item[data-tab]').forEach(b=>b.classList.toggle('on',b.dataset.tab===id));
   render();
   document.querySelector('.content').scrollTop=0;
 }
@@ -829,21 +826,69 @@ function openProfile(){
 function closeProfile(){const el=document.getElementById('profile-ov');if(el)el.remove();}
 
 function editName(){
-  const n=prompt('Nuevo nombre:',DB.user?.name||'');
-  if(n&&n.trim()){DB.user.name=n.trim();save();closeProfile();render();}
+  // No usem prompt() — no funciona en PWA standalone a Safari
+  // Creem un modal propi
+  const current=DB.user?.name||'';
+  const ov=document.createElement('div');
+  ov.className='overlay';ov.id='editname-ov';
+  ov.innerHTML=`<div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-title">CANVIAR NOM</div>
+    <div class="fg">
+      <div class="grp full">
+        <label>Nom d'usuari</label>
+        <input id="editname-inp" type="text" maxlength="20" value="${esc(current)}" placeholder="El teu nom...">
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="editname-cancel">CANCELAR</button>
+      <button class="btn-save" id="editname-save">GUARDAR</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>{ const inp=document.getElementById('editname-inp'); if(inp) inp.focus(); },100);
+  document.getElementById('editname-cancel').addEventListener('click',()=>ov.remove());
+  document.getElementById('editname-save').addEventListener('click',()=>{
+    const val=document.getElementById('editname-inp').value.trim();
+    if(!val) return;
+    DB.user.name=val;
+    save();
+    ov.remove();
+    closeProfile();
+    render();
+    toast('Nom actualitzat');
+  });
 }
 
 function deleteUser(){
   const userId=DB.user?.id||'Usuari_?';
-  if(!confirm('Eliminar '+userId+'?\nEs borraran totes les dades. Aquesta acció no es pot desfer.')) return;
-  const userCounter=DB.userCounter||0;
-  DB={records:[],counter:0,userCounter:userCounter,user:null};
-  save();
-  closeProfile();
-  toast(userId+' eliminat');
-  document.getElementById('app-shell').style.display='none';
-  obSlide=0; obName='';
-  showOnboarding();
+  // Usem un modal de confirmació propi — confirm() pot fallar en PWA Safari
+  const ov=document.createElement('div');
+  ov.className='overlay';ov.id='deleteuser-ov';
+  ov.innerHTML=`<div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-title" style="color:var(--red)">ELIMINAR ${userId}</div>
+    <p style="font-size:14px;color:var(--dim2);line-height:1.5;margin-bottom:8px">
+      S'esborraran totes les dades d'aquest usuari.<br>Aquesta acció no es pot desfer.
+    </p>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="del-cancel">CANCELAR</button>
+      <button class="btn-save" id="del-confirm" style="background:var(--red);color:#fff">ELIMINAR</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('del-cancel').addEventListener('click',()=>ov.remove());
+  document.getElementById('del-confirm').addEventListener('click',()=>{
+    const userCounter=DB.userCounter||0;
+    DB={records:[],counter:0,userCounter:userCounter,user:null};
+    save();
+    ov.remove();
+    closeProfile();
+    document.getElementById('app-shell').style.display='none';
+    obSlide=0; obName='';
+    showOnboarding();
+    toast(userId+' eliminat');
+  });
 }
 
 // ── ONBOARDING ────────────────────────────────────────────────────────────────
