@@ -239,20 +239,23 @@ select option{background:var(–sur2);}
 <div id="app-shell" style="display:none">
   <div class="topbar">
     <div class="topbar-logo">
-      <h1>GYM LOG</h1>
-      <span class="topbar-sub">Control d'entrenament</span>
+      <h1><span class="fit">GYM</span><span class="track">TRACK</span><span class="pro">PRO</span></h1>
     </div>
     <div class="topbar-right">
-      <div class="topbar-streak" id="streak-badge">🔥 0</div>
+      <div class="topbar-userinfo">
+        <div class="topbar-name" id="topbar-name">Hola!</div>
+        <div class="topbar-date" id="topbar-date"></div>
+      </div>
       <div class="topbar-avatar" id="avatar-btn" onclick="openProfile()">?</div>
     </div>
   </div>
   <div class="content"><div class="inner" id="root"></div></div>
   <button class="fab" id="fab" onclick="openQuickAdd()">＋</button>
   <nav class="bottom-nav">
-    <button class="bn-item on" data-tab="dashboard" onclick="goTab('dashboard')"><span class="bn-icon">🏠</span>Inicio</button>
-    <button class="bn-item" data-tab="historial" onclick="goTab('historial')"><span class="bn-icon">📋</span>Historial</button>
-    <button class="bn-item grn" data-tab="graficas" onclick="goTab('graficas')"><span class="bn-icon">📈</span>Gráficas</button>
+    <button class="bn-item on" data-tab="dashboard" onclick="goTab('dashboard')"><span class="bn-icon">🏠</span>Inici</button>
+    <button class="bn-item" data-tab="historial" onclick="goTab('historial')"><span class="bn-icon">🕐</span>Historial</button>
+    <button class="bn-item grn" data-tab="graficas" onclick="goTab('graficas')"><span class="bn-icon">📊</span>Estadísticas</button>
+    <button class="bn-item" data-tab="perfil" onclick="openProfile()"><span class="bn-icon">👤</span>Perfil</button>
   </nav>
 </div>
 
@@ -268,7 +271,7 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register(URL.createObje
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 const KEY='gymlog_v3';
-let DB={records:[],counter:0,user:null};
+let DB={records:[],counter:0,userCounter:0,user:null};
 let tab='dashboard';
 let editRec=null;
 let filters={desde:'',hasta:'',tipo:''};
@@ -356,10 +359,17 @@ function goTab(id){
 }
 
 function updateTopbar(){
-  const streak=calcStreak();
-  document.getElementById('streak-badge').textContent='🔥 '+streak;
+  const name=DB.user?.name||'Atleta';
+  const tn=document.getElementById('topbar-name');
+  const td=document.getElementById('topbar-date');
+  if(tn) tn.textContent='Hola, '+name+'!';
+  if(td){
+    const now=new Date();
+    const WDAYS=['Diumenge','Dilluns','Dimarts','Dimecres','Dijous','Divendres','Dissabte'];
+    td.textContent=WDAYS[now.getDay()]+', '+now.getDate()+' '+MONTHS[now.getMonth()];
+  }
   const av=document.getElementById('avatar-btn');
-  if(DB.user&&DB.user.name) av.textContent=DB.user.name[0].toUpperCase();
+  if(av&&DB.user?.name) av.textContent=DB.user.name[0].toUpperCase();
 }
 
 // ── RENDER ───────────────────────────────────────────────────────────────────
@@ -371,79 +381,153 @@ function render(){
   else root.innerHTML=rGraf();
 }
 
+// ── RING SVG ─────────────────────────────────────────────────────────────────
+function ring(val,max,color,size,strokeW,label,unit){
+  const r=(size-strokeW)/2,cx=size/2,cy=size/2;
+  const circ=2*Math.PI*r;
+  const pct=Math.min(val/max,1);
+  const dash=pct*circ;
+  const gap=circ-dash;
+  return`<div style="position:relative;width:${size}px;height:${size}px;flex-shrink:0">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="${strokeW}"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}"
+        stroke-width="${strokeW}" stroke-linecap="round"
+        stroke-dasharray="${dash} ${gap}"
+        stroke-dashoffset="${circ/4}"
+        style="filter:drop-shadow(0 0 6px ${color});transition:stroke-dasharray .8s ease"/>
+    </svg>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:${size>75?13:11}px;color:#fff;line-height:1">${val}<span style="font-size:${size>75?9:8}px;color:#666">/${max}</span></div>
+      <div style="font-size:8px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:1px">${unit}</div>
+    </div>
+  </div>`;
+}
+
+// ── NEON LINE CHART ───────────────────────────────────────────────────────────
+function neonLine(data,yk,color){
+  if(!data||data.length<2) return`<div style="height:120px;display:flex;align-items:center;justify-content:center;color:#333;font-size:11px">Sin datos esta semana</div>`;
+  const W=200,H=110,PL=4,PR=4,PT=20,PB=20;
+  const vals=data.map(d=>+d[yk]);
+  const mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+  const px=i=>PL+(i/(data.length-1))*(W-PL-PR);
+  const py=v=>PT+(1-(v-mn)/rng)*(H-PT-PB);
+  const pts=data.map((d,i)=>`${px(i)},${py(+d[yk])}`).join(' ');
+  const area=`${px(0)},${H-PB} `+pts+` ${px(data.length-1)},${H-PB}`;
+  const labels=data.map((d,i)=>`<text x="${px(i)}" y="${H-2}" text-anchor="middle" fill="#3a5040" font-size="9" font-family="DM Sans">${d.lbl}</text>`).join('');
+  const dots=data.map((d,i)=>{
+    const v=+d[yk],isMax=v===mx;
+    return`${isMax?`<text x="${px(i)}" y="${py(v)-8}" text-anchor="middle" fill="${color}" font-size="9" font-family="Bebas Neue" letter-spacing="1">${v}</text>`:''}
+    <circle cx="${px(i)}" cy="${py(v)}" r="${isMax?4:2.5}" fill="${isMax?color:'#1a3020'}" stroke="${color}" stroke-width="1.5" style="filter:drop-shadow(0 0 4px ${color})"/>`;
+  }).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;overflow:visible">
+    <defs>
+      <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity=".25"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <polygon points="${area}" fill="url(#ag)"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 5px ${color})"/>
+    ${dots}${labels}
+  </svg>`;
+}
+
 // ── DASHBOARD ────────────────────────────────────────────────────────────────
 function rDash(){
   const name=DB.user?.name||'Atleta';
   const streak=calcStreak();
   const totalEj=DB.records.filter(r=>r.tipo==='ejercicio').length;
   const totalCa=DB.records.filter(r=>r.tipo==='cardio').length;
-  const km=totalKm().toFixed(1);
+  const km=parseFloat(totalKm().toFixed(1));
   const vol=Math.round(totalVol()/1000);
   const week=getWeek();
-  const recent=[...DB.records].sort((a,b)=>b.ts-a.ts).slice(0,5);
-  const hour=new Date().getHours();
-  const greeting=hour<13?'Buenos días':'hour'<20?'Buenas tardes':'Buenas noches';
-  const mot=MOTIVATIONS[Math.floor(Math.random()*MOTIVATIONS.length)];
 
-  const weekHtml=week.map(d=>`
-    <div class="week-day">
-      <div class="week-day-label">${d.label}</div>
-      <div class="week-day-dot${d.done?' done':d.today?' today':''}">${d.done?'✓':d.today?'·':''}</div>
-    </div>`).join('');
+  // Ring targets (adapt to user data)
+  const ejTarget=Math.max(20,totalEj);
+  const caTarget=Math.max(10,totalCa);
+  const streakTarget=Math.max(7,streak);
 
-  const recentHtml=recent.length===0
-    ?`<div class="empty"><div class="empty-ico">🏋️</div><p>Añade tu primer workout</p></div>`
-    :recent.map(r=>{
-      const pr=isPR(r)?`<span class="pr-badge">🏆 PR</span>`:'';
-      const meta=r.tipo==='ejercicio'
-        ?`${r.peso}kg · ${r.reps}×${r.series}`
-        :`${r.km}km · ${r.estilo}`;
-      return`<div class="recent-card">
-        <div class="recent-icon ${r.tipo==='ejercicio'?'ej':'ca'}">${r.tipo==='ejercicio'?'💪':'🏃'}</div>
-        <div class="recent-info">
-          <div class="recent-name">${esc(r.tipo==='ejercicio'?r.nombre:r.estilo)}${pr}</div>
-          <div class="recent-meta">${meta}</div>
-        </div>
-        <div class="recent-date">${fmtS(r.fecha)}</div>
-      </div>`;
-    }).join('');
+  // Week chart data
+  const chartData=week.map(d=>{
+    const dayRecs=DB.records.filter(r=>r.fecha===d.date);
+    const dayEj=dayRecs.filter(r=>r.tipo==='ejercicio').length;
+    return{lbl:d.label.slice(0,2).toLowerCase(),ej:dayEj,done:d.done};
+  });
+
+  // Stats banner
+  const totalMin=DB.records.filter(r=>r.tipo==='cardio').reduce((s,r)=>s+(r.duracion||0),0);
+  const horas=(totalMin/60).toFixed(1);
+
+  // Last workouts for cards
+  const lastEj=[...DB.records].filter(r=>r.tipo==='ejercicio').sort((a,b)=>b.ts-a.ts)[0];
+  const lastCa=[...DB.records].filter(r=>r.tipo==='cardio').sort((a,b)=>b.ts-a.ts)[0];
+
+  const wkCards=()=>{
+    const cards=[];
+    if(lastEj){
+      const pr=isPR(lastEj);
+      cards.push(`<div class="wk-card ej">
+        <div class="wk-num">1</div>
+        <div class="wk-icon">🏋️</div>
+        <div class="wk-name">${esc(lastEj.nombre.toUpperCase())}</div>
+        <div class="wk-sub g">${esc(lastEj.maquina||'Fuerza')}</div>
+        <div class="wk-meta">${lastEj.reps}×${lastEj.series} series · ${lastEj.peso}kg${pr?' 🏆':''}</div>
+        <button class="wk-btn g" onclick="goTab('historial')">VER HISTORIAL</button>
+      </div>`);
+    }
+    if(lastCa){
+      cards.push(`<div class="wk-card ca">
+        <div class="wk-num">${cards.length+1}</div>
+        <div class="wk-icon">🏃</div>
+        <div class="wk-name">${esc(lastCa.estilo.toUpperCase())}</div>
+        <div class="wk-sub o">${esc(lastCa.maquina||'Cardio')}</div>
+        <div class="wk-meta">${lastCa.km}km${lastCa.duracion>0?' · '+lastCa.duracion+' min':''}</div>
+        <button class="wk-btn o" onclick="goTab('historial')">VER HISTORIAL</button>
+      </div>`);
+    }
+    if(cards.length===0) return`<div class="empty"><div class="empty-ico">🏋️</div><p>Añade tu primer workout con el botón +</p></div>`;
+    return`<div class="workout-grid">${cards.join('')}</div>`;
+  };
 
   return`
-  <div class="dash-greeting">
-    <h2>${greeting},<br><span class="acc">${esc(name)}</span></h2>
-    <p>${mot}</p>
-  </div>
+  <div class="dash-title">DASHBOARD</div>
 
-  <div class="stat-grid">
-    <div class="stat-card">
-      <div class="stat-label">Racha actual</div>
-      <div class="stat-num acc">${streak}<span class="unit">días 🔥</span></div>
-      <div class="stat-sub">consecutivos</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Ejercicios</div>
-      <div class="stat-num">${totalEj}</div>
-      <div class="stat-sub">registros totales</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Kilómetros</div>
-      <div class="stat-num blu">${km}<span class="unit">km</span></div>
-      <div class="stat-sub">en cardio</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Volumen</div>
-      <div class="stat-num grn">${vol}<span class="unit">t</span></div>
-      <div class="stat-sub">toneladas movidas</div>
+  <!-- PROGRESS CARD -->
+  <div class="prog-card">
+    <div class="prog-card-title">PROGRÉS SETMANAL</div>
+    <div class="prog-card-sub">Activitat dels últims 7 dies</div>
+    <div class="prog-body">
+      <div class="rings-col">
+        ${ring(Math.min(totalEj,ejTarget),ejTarget,'#ff6a00',82,8,'','Ej')}
+        ${ring(Math.min(streak,streakTarget),streakTarget,'#39ff6a',82,8,'','Dies')}
+        ${ring(Math.min(totalCa,caTarget),caTarget,'#00d4ff',68,7,'','Ca')}
+      </div>
+      <div class="neon-chart-wrap">
+        ${neonLine(chartData,'ej','#39ff6a')}
+      </div>
     </div>
   </div>
 
-  <div class="section-label">SEMANA ACTUAL</div>
-  <div class="stat-card" style="margin-bottom:4px">
-    <div class="week-strip">${weekHtml}</div>
+  <!-- STATS BANNER -->
+  <div class="stats-banner">
+    <div class="sb-item">
+      <div class="sb-label">Temps Total</div>
+      <div class="sb-val g">(${horas} h)</div>
+    </div>
+    <div class="sb-item">
+      <div class="sb-label">Km Totals</div>
+      <div class="sb-val o">(${km})</div>
+    </div>
+    <div class="sb-item">
+      <div class="sb-label">Entrenaments</div>
+      <div class="sb-val w">(${totalEj+totalCa})</div>
+    </div>
   </div>
 
-  <div class="section-label">ÚLTIMOS WORKOUTS</div>
-  ${recentHtml}`;
+  <!-- WORKOUT CARDS -->
+  <div class="section-label">ELS TEUS ENTRENAMENTS</div>
+  ${wkCards()}`;
 }
 
 // ── QUICK ADD SHEET ───────────────────────────────────────────────────────────
@@ -688,7 +772,8 @@ function openProfile(){
   const totalEj=DB.records.filter(r=>r.tipo==='ejercicio').length;
   const totalCa=DB.records.filter(r=>r.tipo==='cardio').length;
   const name=DB.user?.name||'Atleta';
-  const joined=DB.user?.joined?`Desde ${fmtD(DB.user.joined)}`:'';
+  const userId=DB.user?.id||'—';
+  const joined=DB.user?.joined?`Registrat el ${fmtD(DB.user.joined)}`:'';
   const initials=name[0].toUpperCase();
 
   const ov=document.createElement('div');ov.className='overlay';ov.id='profile-ov';
@@ -697,6 +782,7 @@ function openProfile(){
     <div class="profile-header">
       <div class="profile-avatar">${initials}</div>
       <div class="profile-name">${esc(name)}</div>
+      <div class="profile-member" style="color:#39ff6a;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-size:13px">${userId}</div>
       <div class="profile-member">${joined}</div>
     </div>
     <div class="profile-stats">
@@ -706,24 +792,37 @@ function openProfile(){
     </div>
     <div class="profile-actions">
       <button class="profile-action" onclick="editName()">✏️ Cambiar nombre</button>
-      <button class="profile-action danger" onclick="confirmReset()">🗑 Borrar todos los datos</button>
+      <button class="profile-action danger" id="btn-delete-user">🗑 Eliminar ${userId}</button>
       <button class="btn-cancel" onclick="closeProfile()" style="margin-top:4px">CERRAR</button>
     </div>
   </div>`;
   ov.addEventListener('click',e=>{if(e.target===ov)closeProfile();});
   document.body.appendChild(ov);
+
+  // Assignem el listener directament — sense passar l'ID com a string dins onclick
+  document.getElementById('btn-delete-user').addEventListener('click', function(){
+    deleteUser();
+  });
 }
+
 function closeProfile(){const el=document.getElementById('profile-ov');if(el)el.remove();}
+
 function editName(){
   const n=prompt('Nuevo nombre:',DB.user?.name||'');
   if(n&&n.trim()){DB.user.name=n.trim();save();closeProfile();render();}
 }
-function confirmReset(){
-  if(confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer.')){
-    const name=DB.user?.name;
-    DB={records:[],counter:0,user:{name:name||'Atleta',joined:todayStr()}};
-    save();closeProfile();render();toast('Datos borrados');
-  }
+
+function deleteUser(){
+  const userId=DB.user?.id||'Usuari_?';
+  if(!confirm('Eliminar '+userId+'?\nEs borraran totes les dades. Aquesta acció no es pot desfer.')) return;
+  const userCounter=DB.userCounter||0;
+  DB={records:[],counter:0,userCounter:userCounter,user:null};
+  save();
+  closeProfile();
+  toast(userId+' eliminat');
+  document.getElementById('app-shell').style.display='none';
+  obSlide=0; obName='';
+  showOnboarding();
 }
 
 // ── ONBOARDING ────────────────────────────────────────────────────────────────
@@ -782,7 +881,10 @@ function obNext(){
 
 function finishOnboarding(){
   const name=(obName||'Atleta').trim();
-  DB.user={name,joined:todayStr()};
+  if(!DB.userCounter) DB.userCounter=0;
+  DB.userCounter++;
+  const userId='Usuari_'+DB.userCounter;
+  DB.user={id:userId,name,joined:todayStr()};
   save();
   document.getElementById('onboard-shell').style.display='none';
   document.getElementById('app-shell').style.display='flex';
@@ -802,5 +904,6 @@ if(!DB.user){
   render();
 }
 </script>
+
 </body>
 </html>
