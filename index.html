@@ -3,6 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d0d0d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,22 +25,15 @@
   --st:env(safe-area-inset-top,0px);
   --sb:env(safe-area-inset-bottom,0px);
 }
-html{height:100%;overflow:hidden;}
-body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;-webkit-text-size-adjust:100%;}
+html{height:100%;overflow:hidden;color-scheme:dark;}
+body{height:100%;overflow:hidden;background:#0a0a0a!important;color:#f0f0f0!important;font-family:'DM Sans',sans-serif;-webkit-text-size-adjust:100%;}
 
 /* ── APP SHELL ── */
 #app-shell{
 position:fixed;inset:0;
 display:flex;flex-direction:column;
 padding-top:var(–st);
-background:var(–bg);
-}
-.topbar{
-background:var(–sur);
-border-bottom:1px solid var(–bor);
-padding:10px 14px 8px;
-display:flex;align-items:center;justify-content:space-between;
-flex-shrink:0;
+background:#0a0a0a!important;
 }
 .topbar-logo{display:flex;flex-direction:column;}
 .topbar h1{font-family:‘Bebas Neue’,sans-serif;font-size:22px;letter-spacing:3px;line-height:1;}
@@ -79,9 +74,16 @@ padding-bottom:calc(var(–nb) + var(–sb) + 16px);
 #onboard-shell{
 position:fixed;inset:0;
 flex-direction:column;
-background:var(–bg);
+background:#0a0a0a!important;
 padding-top:var(–st);
 padding-bottom:var(–sb);
+}
+.topbar{
+background:#141414!important;
+border-bottom:1px solid #2a2a2a;
+padding:10px 14px 8px;
+display:flex;align-items:center;justify-content:space-between;
+flex-shrink:0;
 }
 .ob-slides{flex:1;overflow:hidden;position:relative;}
 .ob-slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 26px;text-align:center;opacity:0;transform:translateX(40px);transition:all .35s ease;pointer-events:none;}
@@ -286,7 +288,7 @@ select option{background:var(–sur2);}
 // ── PWA SETUP ────────────────────────────────────────────────────────────────
 const MD={name:"GYM LOG",short_name:"GymLog",start_url:"./",display:"standalone",background_color:"#0d0d0d",theme_color:"#0d0d0d",orientation:"portrait-primary",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%230d0d0d'/%3E%3Ctext x='256' y='340' text-anchor='middle' font-size='280' font-family='serif'%3E%F0%9F%8F%8B%EF%B8%8F%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}]};
 document.getElementById('pwa-manifest').href=URL.createObjectURL(new Blob([JSON.stringify(MD)],{type:'application/json'}));
-const SWC=`const C='gl-v3';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll([self.location.pathname]))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match(self.location.pathname)))));`;
+const SWC=`const C='gl-v5';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll([self.location.pathname])));self.skipWaiting();});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));});self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match(self.location.pathname)))));`;
 if('serviceWorker' in navigator) navigator.serviceWorker.register(URL.createObjectURL(new Blob([SWC],{type:'application/javascript'}))).catch(()=>{});
 
 // ── STATE ────────────────────────────────────────────────────────────────────
